@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: lineage
+
+server:
+  port: ${SERVER_PORT:8080}
+
+lineage:
+  falkordb:
+    host: ${FALKORDB_HOST:localhost}
+    port: ${FALKORDB_PORT:6379}
+    project-graph: ${FALKORDB_PROJECT_GRAPH:lineage_demo}
+  github:
+    token: ${GITHUB_TOKEN:}
+    repository: ${GITHUB_REPOSITORY:}
+  llm:
+    api-key: ${LLM_API_KEY:}
+  ingest:
+    enabled: ${INGEST_ENABLED:false}
