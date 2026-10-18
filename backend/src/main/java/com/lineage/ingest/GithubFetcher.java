@@ -26,10 +26,9 @@ public class GithubFetcher {
 
     private static final int PAGE_SIZE = 100;
     private static final int MAX_ITEMS = 300;
-    private static final int MAX_DETAIL_PULL_REQUESTS_WITHOUT_TOKEN = 30;
-    private static final int MAX_DETAIL_PULL_REQUESTS_WITH_TOKEN = 60;
-    private static final int DETAIL_FETCH_THREADS = 6;
-    private static final int MAX_PAGES = 3;
+    private static final int MAX_DETAIL_PULL_REQUESTS = 15;
+    private static final int DETAIL_FETCH_THREADS = 4;
+    private static final int MAX_PAGES = 1;
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final String GITHUB_API_BASE_URL = "https://api.github.com/repos/";
     private static final String GITHUB_ACCEPT_HEADER = "application/vnd.github+json";
@@ -133,9 +132,7 @@ public class GithubFetcher {
     }
 
     private int maxDetailPullRequests() {
-        return token.isBlank()
-                ? MAX_DETAIL_PULL_REQUESTS_WITHOUT_TOKEN
-                : MAX_DETAIL_PULL_REQUESTS_WITH_TOKEN;
+        return MAX_DETAIL_PULL_REQUESTS;
     }
 
     public String normalizeRepository(String value) {

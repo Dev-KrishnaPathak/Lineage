@@ -88,13 +88,14 @@ public class ApiController {
     }
 
     @PostMapping("/ingest")
-    public IngestService.IngestStatus ingest(@RequestBody IngestRequest request) {
+    public IngestService.IngestStart ingest(@RequestBody IngestRequest request) {
         if (request == null || request.repository() == null || request.repository().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Enter a GitHub repository URL or owner/repository");
         }
         try {
-            return ingestService.start(request.repository());
+            ingestService.start(request.repository());
+            return new IngestService.IngestStart("started");
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
