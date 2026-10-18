@@ -11,6 +11,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import redis.clients.jedis.exceptions.JedisException;
 
 @Component
 @Order(2)
@@ -42,21 +43,26 @@ public class DemoDataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (nodeCount() > 0) {
-            LOGGER.info("Startup graph already contains data; skipping seed");
-            return;
-        }
-        if (!repository.isBlank() && !githubToken.isBlank()) {
-            try {
-                loadRepository();
-                LOGGER.info("Startup graph loaded from configured repository");
+        try {
+            if (nodeCount() > 0) {
+                LOGGER.info("Startup graph already contains data; skipping seed");
                 return;
-            } catch (java.io.IOException | InterruptedException | IllegalStateException exception) {
-                LOGGER.warn("Configured repository ingest failed; loading demo seed");
             }
+            if (!repository.isBlank() && !githubToken.isBlank()) {
+                try {
+                    loadRepository();
+                    LOGGER.info("Startup graph loaded from configured repository");
+                    return;
+                } catch (java.io.IOException | InterruptedException | IllegalStateException exception) {
+                    LOGGER.warn("Configured repository ingest failed; loading demo seed");
+                }
+            }
+            graphLoader.loadDemo();
+            LOGGER.info("Startup graph loaded from demo seed");
+        } catch (JedisException exception) {
+            LOGGER.error("Could not access FalkorDB at {}:{} during startup seeding; continuing startup",
+                    graphClient.host(), graphClient.port(), exception);
         }
-        graphLoader.loadDemo();
-        LOGGER.info("Startup graph loaded from demo seed");
     }
 
     private long nodeCount() {

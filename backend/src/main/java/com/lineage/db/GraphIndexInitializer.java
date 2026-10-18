@@ -7,6 +7,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.core.annotation.Order;
+import redis.clients.jedis.exceptions.JedisException;
 
 @Component
 @Order(1)
@@ -22,17 +23,22 @@ public class GraphIndexInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        GraphContextGenerator graph = graphClient.projectGraph();
-        for (String indexQuery : Queries.PROJECT_INDEXES) {
-            try {
-                graph.query(indexQuery);
-            } catch (RuntimeException exception) {
-                String message = exception.getMessage();
-                if (message == null || !message.toLowerCase().contains("already indexed")) {
-                    throw exception;
+        try {
+            GraphContextGenerator graph = graphClient.projectGraph();
+            for (String indexQuery : Queries.PROJECT_INDEXES) {
+                try {
+                    graph.query(indexQuery);
+                } catch (RuntimeException exception) {
+                    String message = exception.getMessage();
+                    if (message == null || !message.toLowerCase().contains("already indexed")) {
+                        throw exception;
+                    }
+                    log.debug("Index already exists: {}", indexQuery);
                 }
-                log.debug("Index already exists: {}", indexQuery);
             }
+        } catch (JedisException exception) {
+            log.error("Could not initialize FalkorDB indexes at {}:{}; continuing startup",
+                    graphClient.host(), graphClient.port(), exception);
         }
     }
 }
