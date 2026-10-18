@@ -124,6 +124,10 @@ public class ApiController {
                         List.of());
             }
             GraphTools.ToolResult pullRequest = graphTools.findPullRequest(prNumber);
+            if (pullRequest.data().isEmpty()) {
+                tryLoadPullRequest(prNumber);
+                pullRequest = graphTools.findPullRequest(prNumber);
+            }
             GraphTools.ToolResult reviewers = graphTools.findReviewers(prNumber);
             String title = pullRequest.data().isEmpty()
                     ? ""
@@ -146,6 +150,7 @@ public class ApiController {
                         List.of(),
                         List.of());
             }
+            tryLoadPullRequest(prNumber);
             result = graphTools.suggestReviewers(prNumber);
         } else if (question.contains("decision") || question.contains("decided")) {
             result = graphTools.traceDecision(extractTopic(request.question()));
@@ -156,6 +161,7 @@ public class ApiController {
                         List.of(),
                         List.of());
             }
+            tryLoadPullRequest(prNumber);
             result = graphTools.findConflicts(extractNumber(request.question()));
         } else {
             result = graphTools.recommendIssues("demo-user");
@@ -215,6 +221,17 @@ public class ApiController {
     private static void requireQuestion(AskRequest request) {
         if (request == null || request.question() == null || request.question().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question is required");
+        }
+
+        private void tryLoadPullRequest(int prNumber) {
+            try {
+                ingestService.loadPullRequestIfMissing(prNumber);
+            } catch (IOException exception) {
+                logger.warn("Targeted PR fetch failed for #{}: {}", prNumber, exception.getMessage());
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                logger.warn("Targeted PR fetch interrupted for #{}", prNumber);
+            }
         }
     }
 

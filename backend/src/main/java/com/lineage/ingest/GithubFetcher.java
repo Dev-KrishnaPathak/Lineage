@@ -85,6 +85,23 @@ public class GithubFetcher {
         return new RepositorySnapshot(issues, pullRequests, reviews, comments, files);
     }
 
+    public RepositorySnapshot fetchPullRequest(String repositoryName, int pullRequestNumber)
+            throws IOException, InterruptedException {
+        if (pullRequestNumber < 1) {
+            throw new IllegalArgumentException("A valid pull request number is required");
+        }
+        String canonicalRepository = normalizeRepository(repositoryName);
+        JsonNode pullRequest = fetchPage(canonicalRepository,
+                "/pulls/" + pullRequestNumber).get(0);
+        PullRequestDetails details = fetchPullRequestDetails(canonicalRepository, pullRequest);
+        return new RepositorySnapshot(
+                List.of(),
+                List.of(pullRequest),
+                details.reviews(),
+                details.comments(),
+                details.files());
+    }
+
     private PullRequestDetails fetchPullRequestDetails(
             String repositoryName,
             JsonNode pullRequest) throws IOException, InterruptedException {
@@ -178,6 +195,33 @@ public class GithubFetcher {
             pageItems.forEach(result::add);
         }
         return result.size() > MAX_ITEMS ? result.subList(0, MAX_ITEMS) : result;
+    }
+
+    private List<JsonNode> fetchPage(String repositoryName, String path)
+            throws IOException, InterruptedException {
+        String separator = path.contains("?") ? "&" : "?";
+        HttpRequest.Builder request = HttpRequest.newBuilder()
+                .uri(URI.create(GITHUB_API_BASE_URL + repositoryName + path + separator + "page=1&per_page=1"))
+                .timeout(HTTP_TIMEOUT)
+                .header("Accept", GITHUB_ACCEPT_HEADER)
+                .header("X-GitHub-Api-Version", GITHUB_API_VERSION);
+        if (!token.isBlank()) {
+            request.header("Authorization", "Bearer " + token);
+        }
+        HttpResponse<String> response = httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 429 || isRateLimited(response)) {
+            throw new IOException("GitHub API rate limit reached. Set GITHUB_TOKEN or GH_TOKEN and restart the backend.");
+        }
+        if (response.statusCode() >= 400) {
+            String detail = objectMapper.readTree(response.body()).path("message")
+                    .asText("HTTP " + response.statusCode());
+            throw new IOException("GitHub API request failed: " + detail);
+        }
+        JsonNode item = objectMapper.readTree(response.body());
+        if (!item.isObject()) {
+            throw new IOException("GitHub pull request was not found");
+        }
+        return List.of(item);
     }
 
     private boolean isRateLimited(HttpResponse<String> response) {

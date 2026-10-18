@@ -15,6 +15,7 @@ public class IngestService {
     private final DecisionDetector decisionDetector;
     private final GraphClient graphClient;
     private volatile IngestStatus status = IngestStatus.idle();
+    private volatile String activeRepository = "";
 
     public IngestService(
             GithubFetcher githubFetcher,
@@ -33,12 +34,22 @@ public class IngestService {
             throw new IllegalStateException("Another repository is already loading");
         }
         status = IngestStatus.started(canonicalRepository);
+        activeRepository = canonicalRepository;
         CompletableFuture.runAsync(() -> load(canonicalRepository));
         return new IngestStatus(canonicalRepository, "started", Counts.empty(), false, null);
     }
 
     public IngestStatus status() {
         return status;
+    }
+
+    public synchronized boolean loadPullRequestIfMissing(int pullRequestNumber)
+            throws IOException, InterruptedException {
+        if (!status.done() || activeRepository.isBlank()) {
+            return false;
+        }
+        graphLoader.load(githubFetcher.fetchPullRequest(activeRepository, pullRequestNumber));
+        return true;
     }
 
     private void load(String canonicalRepository) {
