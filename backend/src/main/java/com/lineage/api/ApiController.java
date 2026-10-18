@@ -222,16 +222,16 @@ public class ApiController {
         if (request == null || request.question() == null || request.question().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question is required");
         }
+    }
 
-        private void tryLoadPullRequest(int prNumber) {
-            try {
-                ingestService.loadPullRequestIfMissing(prNumber);
-            } catch (IOException exception) {
-                logger.warn("Targeted PR fetch failed for #{}: {}", prNumber, exception.getMessage());
-            } catch (InterruptedException exception) {
-                Thread.currentThread().interrupt();
-                logger.warn("Targeted PR fetch interrupted for #{}", prNumber);
-            }
+    private void tryLoadPullRequest(int prNumber) {
+        try {
+            ingestService.loadPullRequestIfMissing(prNumber);
+        } catch (IOException exception) {
+            logger.warn("Targeted PR fetch failed for #{}: {}", prNumber, exception.getMessage());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            logger.warn("Targeted PR fetch interrupted for #{}", prNumber);
         }
     }
 
