@@ -26,7 +26,7 @@ function App() {
   const [loadingRecommendations, setLoadingRecommendations] = useState(false)
   const [repository, setRepository] = useState('')
   const [loadingIngest, setLoadingIngest] = useState(false)
-  const [ingestProgress, setIngestProgress] = useState({ progress: 0, message: '' })
+  const [ingestProgress, setIngestProgress] = useState({ message: '' })
   const [loadedRepository, setLoadedRepository] = useState('No repository loaded')
   const [selectedNode, setSelectedNode] = useState(null)
   const [nodeDetails, setNodeDetails] = useState(null)
@@ -98,15 +98,16 @@ function App() {
     setError('')
     setLoadingIngest(true)
     try {
-      let status = await ingest(repository.trim())
-      setIngestProgress({ progress: status.progress, message: status.message })
-      while (status.running) {
-        await new Promise((resolve) => window.setTimeout(resolve, 700))
+      await ingest(repository.trim())
+      let status = await getIngestStatus()
+      setIngestProgress({ message: ingestMessage(status) })
+      while (!status.done) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000))
         status = await getIngestStatus()
-        setIngestProgress({ progress: status.progress, message: status.message })
+        setIngestProgress({ message: ingestMessage(status) })
         if (status.error) throw new Error(status.error)
       }
-      if (status.phase === 'failed') throw new Error(status.error || 'GitHub ingestion failed.')
+      if (status.error) throw new Error(status.error)
       setGraph(await getGraph())
       setPathNodeIds([])
       setSelectedNode(null)
@@ -118,7 +119,7 @@ function App() {
       setError(requestError.message)
     } finally {
       setLoadingIngest(false)
-      setIngestProgress({ progress: 0, message: '' })
+      setIngestProgress({ message: '' })
     }
   }
 
@@ -136,7 +137,7 @@ function App() {
           <span><strong>{graph.links.length}</strong> relationships</span>
         </div>
       </header>
-      {loadingIngest && <div className="ingest-bar"><span>{ingestProgress.message || 'Preparing repository'}</span><strong>{ingestProgress.progress}%</strong><i style={{ width: `${Math.max(4, ingestProgress.progress)}%` }} /></div>}
+      {loadingIngest && <div className="ingest-bar"><span>{ingestProgress.message || 'Preparing repository'}</span><i /></div>}
       {backendStatus !== 'ready' && <div className="app-error" role="status">{backendStatus === 'offline' ? 'The backend is unavailable. Please try again in a moment.' : 'Waking up the server, retrying…'}</div>}
       {error && <div className="app-error" role="alert">{error}</div>}
       <div className="workspace">
@@ -159,6 +160,23 @@ function App() {
 
 function EmptyState({ text }) {
   return <p className="empty-state">{text}</p>
+}
+
+function ingestMessage(status) {
+  const counts = status.counts || {}
+  const countText = counts.pullRequests || counts.issues
+    ? ` (${counts.issues || 0} issues, ${counts.pullRequests || 0} PRs, ${counts.reviews || 0} reviews, ${counts.comments || 0} comments, ${counts.files || 0} files)`
+    : ''
+  const messages = {
+    queued: 'Preparing GitHub import',
+    fetching: 'Fetching issues, pull requests and review data',
+    indexing: 'Building repository relationships',
+    analyzing: 'Detecting repository decisions',
+    complete: 'Repository graph is ready',
+    failed: 'GitHub import failed',
+    idle: 'Load a GitHub repository to begin',
+  }
+  return `${messages[status.stage] || 'Loading repository'}${countText}`
 }
 
 export default App
