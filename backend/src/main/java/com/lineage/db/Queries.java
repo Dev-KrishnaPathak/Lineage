@@ -75,6 +75,15 @@ public final class Queries {
                    id(new) AS newId, id(f) AS fileId, id(past) AS pastId, id(person) AS personId
             ORDER BY score DESC
             """;
+    public static final String FIND_REVIEWERS = """
+            MATCH (person:Person)-[:REVIEWED]->(pr:PR {number: $number})
+            RETURN person.login AS login, id(pr) AS prId, id(person) AS personId
+            ORDER BY person.login
+            """;
+    public static final String FIND_PR = """
+            MATCH (pr:PR {number: $number})
+            RETURN pr.number AS number, pr.title AS title, id(pr) AS prId
+            """;
     public static final String FIND_OWNERS = """
             MATCH (pr:PR)-[:CHANGED]->(f:File {path: $path}),
                   (person:Person)-[:REVIEWED]->(pr)
@@ -146,5 +155,15 @@ public final class Queries {
             MATCH (start)-[*1..]->(node)
             WHERE id(start) = $nodeId
             RETURN DISTINCT id(node) AS id
+            """;
+    public static final String NODE_DETAILS = """
+            MATCH (n)
+            WHERE id(n) = $nodeId
+            RETURN labels(n) AS labels, n.login AS login, n.name AS name,
+                   n.number AS number, n.title AS title, n.body AS body,
+                   n.state AS state, n.path AS path, n.url AS url,
+                   n.summary AS summary, n.sourceUrl AS sourceUrl,
+                   n.fromAgent AS fromAgent, n.toAgent AS toAgent,
+                   n.payload AS payload
             """;
 }

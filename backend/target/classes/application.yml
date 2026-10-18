@@ -4,6 +4,8 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
 
 lineage:
   falkordb:
@@ -11,7 +13,7 @@ lineage:
     port: ${FALKORDB_PORT:6379}
     project-graph: ${FALKORDB_PROJECT_GRAPH:lineage_demo}
   github:
-    token: ${GITHUB_TOKEN:}
+    token: ${GITHUB_TOKEN:${GH_TOKEN:}}
     repository: ${GITHUB_REPOSITORY:}
   llm:
     api-key: ${LLM_API_KEY:}

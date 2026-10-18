@@ -22,6 +22,15 @@ The canonical node, edge, and property names are documented in [docs/schema.md](
    ```
 
 2. Set `GITHUB_REPOSITORY` to `owner/repository`. Add `GITHUB_TOKEN` and `LLM_API_KEY` when available.
+   The UI can also load any public `owner/repository` at runtime. Set `GITHUB_TOKEN` for higher GitHub API limits and private repositories.
+
+   GitHub's unauthenticated API limit is shared by the current network. If loading returns HTTP 429, export a personal access token locally and restart the backend:
+
+   ```sh
+   export GITHUB_TOKEN=your_token
+   ```
+
+   `GH_TOKEN` is also supported. Never commit either token or paste it into source files.
 
 3. Start FalkorDB:
 
@@ -68,6 +77,7 @@ The frontend runs at http://localhost:5173 and the backend at http://localhost:8
 - `GET /recommend/{login}` recommends open issues.
 - `POST /ask/baseline` runs the graph-free baseline.
 - `POST /simulate/{nodeId}` traverses downstream graph relationships.
+- `POST /ingest` accepts `{ "repository": "owner/repository" }`, fetches GitHub data, and replaces the active project graph.
 
 ## Demo script
 
@@ -77,3 +87,5 @@ The frontend runs at http://localhost:5173 and the backend at http://localhost:8
 4. Click **Review** for PR `2` to see the reviewer/conflict tools and the Triager -> Matcher -> Historian timeline.
 5. Click a highlighted graph node to run the downstream what-if simulation.
 6. Use **RAG vs graph** to compare the graph-backed response with the isolated baseline.
+
+To switch repositories without restarting the app, enter an `owner/repository` in the **Load a GitHub repository** field and choose **Load repository**.

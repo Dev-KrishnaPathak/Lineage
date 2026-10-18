@@ -27,6 +27,14 @@ public class GraphTools {
         return run(Queries.SUGGEST_REVIEWERS, Map.of("number", prNumber), "login", "score");
     }
 
+    public ToolResult findReviewers(int prNumber) {
+        return run(Queries.FIND_REVIEWERS, Map.of("number", prNumber), "login");
+    }
+
+    public ToolResult findPullRequest(int prNumber) {
+        return run(Queries.FIND_PR, Map.of("number", prNumber), "number", "title");
+    }
+
     public ToolResult findOwners(String filePath) {
         return run(Queries.FIND_OWNERS, Map.of("path", filePath), "login", "score");
     }
@@ -41,6 +49,26 @@ public class GraphTools {
 
     public ToolResult recommendIssues(String login) {
         return run(Queries.RECOMMEND_ISSUES, Map.of("login", login), "number", "title");
+    }
+
+    public static String describe(List<Map<String, Object>> rows, String emptyMessage) {
+        if (rows.isEmpty()) {
+            return emptyMessage;
+        }
+        List<String> descriptions = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            if (row.containsKey("login")) {
+                descriptions.add(String.valueOf(row.get("login")));
+            } else if (row.containsKey("summary")) {
+                descriptions.add(String.valueOf(row.get("summary"))
+                        + (row.containsKey("path") ? " affecting " + row.get("path") : ""));
+            } else if (row.containsKey("title")) {
+                descriptions.add("Issue #" + row.get("number") + ": " + row.get("title"));
+            } else {
+                descriptions.add(row.toString());
+            }
+        }
+        return String.join("; ", descriptions);
     }
 
     private ToolResult run(String query, Map<String, Object> parameters, String... dataFields) {

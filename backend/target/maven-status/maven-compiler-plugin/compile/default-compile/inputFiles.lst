@@ -10,9 +10,11 @@
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/db/GraphIndexInitializer.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/db/Queries.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/ingest/DecisionDetector.java
+/Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/ingest/DemoDataInitializer.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/ingest/GithubFetcher.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/ingest/GraphLoader.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/ingest/IngestRunner.java
+/Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/ingest/IngestService.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/memory/ContributorMemory.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/memory/HandoffStore.java
 /Users/krishna/Documents/Lineage/backend/src/main/java/com/lineage/tools/GraphTools.java

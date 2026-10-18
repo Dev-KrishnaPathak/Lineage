@@ -3,8 +3,10 @@ com/lineage/agents/Triager$AgentResponse.class
 com/lineage/api/ApiController$PrResponse.class
 com/lineage/agents/Orchestrator$ReviewTrail.class
 com/lineage/agents/Matcher.class
+com/lineage/ingest/IngestService$IngestResult.class
 com/lineage/api/ApiController$SimulationResponse.class
 com/lineage/ingest/DecisionDetector.class
+com/lineage/ingest/DemoDataInitializer.class
 com/lineage/agents/Matcher$AgentResponse.class
 com/lineage/memory/HandoffStore.class
 com/lineage/ingest/GraphLoader.class
@@ -13,6 +15,7 @@ com/lineage/db/GraphIndexInitializer.class
 com/lineage/memory/HandoffStore$Handoff.class
 com/lineage/api/ApiController$GraphNode.class
 com/lineage/tools/GraphTools.class
+com/lineage/ingest/IngestService.class
 com/lineage/db/Queries.class
 com/lineage/agents/Historian$AgentResponse.class
 com/lineage/agents/Triager.class
@@ -31,6 +34,7 @@ com/lineage/api/ApiController$PrRequest.class
 com/lineage/api/ApiController$AskResponse.class
 com/lineage/api/ApiController$BaselineResponse.class
 com/lineage/ingest/GithubFetcher$RepositorySnapshot.class
+com/lineage/api/ApiController$IngestRequest.class
 com/lineage/api/ApiController.class
 com/lineage/LineageApplication$1.class
 com/lineage/baseline/RagBaseline$Document.class

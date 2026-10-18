@@ -18,12 +18,15 @@ public class Historian {
 
     public AgentResponse run(int prNumber, String matcher) {
         GraphTools.ToolResult result = graphTools.findConflicts(prNumber);
+        String fallback = result.data().isEmpty()
+                ? "No recorded decision conflicts were found."
+                : "Potential decision conflict: " + GraphTools.describe(result.data(), "");
         String response = model.respond("""
                 You are the Historian agent. Check this PR for conflicts with past decisions.
                 Draft a concise review comment using the graph result.
                 Matcher handoff: %s
                 Graph result: %s
-                """.formatted(matcher, result.data()), result.data().toString());
+                """.formatted(matcher, result.data()), fallback);
         return new AgentResponse("Historian", "Review", response, result.pathNodeIds());
     }
 

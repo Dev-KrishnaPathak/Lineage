@@ -50,6 +50,14 @@ public class DecisionDetector {
                     "sourceUrl", item.path("html_url").asText()));
             graph.query(Queries.LINK_DECISION_MADE_IN, Map.of(
                     "id", id, "number", item.path("number").asInt()));
+            int pullRequestNumber = item.path("number").asInt();
+            for (JsonNode file : snapshot.files()) {
+                if (file.path("number").asInt() == pullRequestNumber
+                        && !file.path("filename").asText().isBlank()) {
+                    graph.query(Queries.LINK_DECISION_AFFECTS, Map.of(
+                            "id", id, "path", file.path("filename").asText()));
+                }
+            }
         }
     }
 }
