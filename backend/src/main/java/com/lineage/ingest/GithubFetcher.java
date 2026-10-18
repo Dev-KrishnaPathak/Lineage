@@ -16,6 +16,10 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Component
 public class GithubFetcher {
@@ -24,6 +28,7 @@ public class GithubFetcher {
     private static final int MAX_ITEMS = 300;
     private static final int MAX_DETAIL_PULL_REQUESTS_WITHOUT_TOKEN = 30;
     private static final int MAX_DETAIL_PULL_REQUESTS_WITH_TOKEN = 60;
+    private static final int DETAIL_FETCH_THREADS = 6;
     private static final int MAX_PAGES = 3;
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final String GITHUB_API_BASE_URL = "https://api.github.com/repos/";
@@ -61,27 +66,59 @@ public class GithubFetcher {
         List<JsonNode> reviews = new ArrayList<>();
         List<JsonNode> comments = new ArrayList<>();
         List<JsonNode> files = new ArrayList<>();
-        for (JsonNode pullRequest : pullRequests.stream().limit(maxDetailPullRequests()).toList()) {
-            appendPullRequestDetails(canonicalRepository, pullRequest, reviews, comments, files);
+        List<Future<PullRequestDetails>> detailTasks = new ArrayList<>();
+        ExecutorService detailExecutor = Executors.newFixedThreadPool(DETAIL_FETCH_THREADS);
+        try {
+            for (JsonNode pullRequest : pullRequests.stream().limit(maxDetailPullRequests()).toList()) {
+                detailTasks.add(detailExecutor.submit(() -> fetchPullRequestDetails(canonicalRepository, pullRequest)));
+            }
+            for (Future<PullRequestDetails> detailTask : detailTasks) {
+                PullRequestDetails details = getDetails(detailTask);
+                reviews.addAll(details.reviews());
+                comments.addAll(details.comments());
+                files.addAll(details.files());
+            }
+        } finally {
+            detailExecutor.shutdownNow();
         }
         LOGGER.info("Fetched {} PRs, {} reviews, {} comments and {} files for {}",
                 pullRequests.size(), reviews.size(), comments.size(), files.size(), canonicalRepository);
         return new RepositorySnapshot(issues, pullRequests, reviews, comments, files);
     }
 
-    private void appendPullRequestDetails(
+    private PullRequestDetails fetchPullRequestDetails(
             String repositoryName,
-            JsonNode pullRequest,
-            List<JsonNode> reviews,
-            List<JsonNode> comments,
-            List<JsonNode> files) throws IOException, InterruptedException {
+            JsonNode pullRequest) throws IOException, InterruptedException {
         int pullRequestNumber = pullRequest.path("number").asInt();
+        List<JsonNode> reviews = new ArrayList<>();
+        List<JsonNode> comments = new ArrayList<>();
+        List<JsonNode> files = new ArrayList<>();
         appendTaggedNodes(reviews, pages(repositoryName,
                 "/pulls/" + pullRequestNumber + "/reviews"), pullRequestNumber);
         appendTaggedNodes(comments, pages(repositoryName,
                 "/issues/" + pullRequestNumber + "/comments"), pullRequestNumber);
         appendTaggedNodes(files, pages(repositoryName,
                 "/pulls/" + pullRequestNumber + "/files"), pullRequestNumber);
+        return new PullRequestDetails(reviews, comments, files);
+    }
+
+    private PullRequestDetails getDetails(Future<PullRequestDetails> detailTask)
+            throws IOException, InterruptedException {
+        try {
+            return detailTask.get();
+        } catch (ExecutionException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof IOException ioException) {
+                throw ioException;
+            }
+            if (cause instanceof InterruptedException interruptedException) {
+                throw interruptedException;
+            }
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IOException("GitHub pull request details could not be fetched", cause);
+        }
     }
 
     private void appendTaggedNodes(
@@ -154,6 +191,12 @@ public class GithubFetcher {
     public record RepositorySnapshot(
             List<JsonNode> issues,
             List<JsonNode> pullRequests,
+            List<JsonNode> reviews,
+            List<JsonNode> comments,
+            List<JsonNode> files) {
+    }
+
+    private record PullRequestDetails(
             List<JsonNode> reviews,
             List<JsonNode> comments,
             List<JsonNode> files) {
