@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.core.annotation.Order;
 
 @Component
+@Order(1)
 public class GraphIndexInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(GraphIndexInitializer.class);

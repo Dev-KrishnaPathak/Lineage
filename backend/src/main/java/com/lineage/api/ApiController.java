@@ -82,6 +82,11 @@ public class ApiController {
         return new GraphResponse(nodes, links);
     }
 
+    @GetMapping("/health")
+    public Map<String, String> health() {
+        return Map.of("status", "ok");
+    }
+
     @PostMapping("/ingest")
     public IngestService.IngestStatus ingest(@RequestBody IngestRequest request) {
         if (request == null || request.repository() == null || request.repository().isBlank()) {

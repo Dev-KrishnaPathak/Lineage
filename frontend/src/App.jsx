@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import { getGraph, getIngestStatus, getNodeDetails, ingest, recommend } from './api'
 import GraphView from './components/GraphView'
@@ -32,6 +32,33 @@ function App() {
   const [nodeDetails, setNodeDetails] = useState(null)
   const [nodeDetailsLoading, setNodeDetailsLoading] = useState(false)
   const [nodeDetailsError, setNodeDetailsError] = useState('')
+  const [backendStatus, setBackendStatus] = useState('checking')
+
+  useEffect(() => {
+    let cancelled = false
+    const loadInitialGraph = async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (cancelled) return
+        if (attempt > 0) {
+          setBackendStatus('waking')
+          await new Promise((resolve) => window.setTimeout(resolve, 3000))
+        }
+        try {
+          const loadedGraph = await getGraph()
+          if (!cancelled) {
+            setGraph(loadedGraph)
+            setBackendStatus('ready')
+          }
+          return
+        } catch {
+          if (!cancelled) setBackendStatus('waking')
+        }
+      }
+      if (!cancelled) setBackendStatus('offline')
+    }
+    loadInitialGraph()
+    return () => { cancelled = true }
+  }, [])
 
   const selectNode = async (node) => {
     setSelectedNode(node)
@@ -110,6 +137,7 @@ function App() {
         </div>
       </header>
       {loadingIngest && <div className="ingest-bar"><span>{ingestProgress.message || 'Preparing repository'}</span><strong>{ingestProgress.progress}%</strong><i style={{ width: `${Math.max(4, ingestProgress.progress)}%` }} /></div>}
+      {backendStatus !== 'ready' && <div className="app-error" role="status">{backendStatus === 'offline' ? 'The backend is unavailable. Please try again in a moment.' : 'Waking up the server, retrying…'}</div>}
       {error && <div className="app-error" role="alert">{error}</div>}
       <div className="workspace">
         <GraphView graph={graph} repository={loadedRepository} pathNodeIds={pathNodeIds} onPathChange={setPathNodeIds} onNodeSelect={selectNode} />

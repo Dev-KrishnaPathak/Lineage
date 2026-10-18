@@ -147,6 +147,7 @@ public final class Queries {
             RETURN id(n) AS id, labels(n) AS labels,
                    coalesce(n.login, n.name, n.path, n.number, n.id) AS label
             """;
+    public static final String GRAPH_NODE_COUNT = "MATCH (n) RETURN count(n) AS count";
     public static final String GRAPH_LINKS = """
             MATCH (source)-[r]->(target)
             RETURN id(source) AS source, id(target) AS target, type(r) AS type

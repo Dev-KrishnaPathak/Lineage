@@ -54,7 +54,7 @@ public class IngestService {
             status = new IngestStatus(canonicalRepository, 90, "analyzing", "Detecting repository decisions", true, null);
             decisionDetector.detect(snapshot);
             status = new IngestStatus(canonicalRepository, 100, "complete", "Repository graph is ready", false, null);
-        } catch (Exception exception) {
+        } catch (IOException | InterruptedException | IllegalArgumentException | IllegalStateException exception) {
             status = new IngestStatus(canonicalRepository, 0, "failed", null, false, message(exception));
         }
     }

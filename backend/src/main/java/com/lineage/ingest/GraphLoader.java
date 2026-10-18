@@ -1,12 +1,12 @@
 package com.lineage.ingest;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.falkordb.GraphContextGenerator;
 import com.lineage.db.GraphClient;
 import com.lineage.db.Queries;
-import com.falkordb.GraphContextGenerator;
-import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,7 +24,17 @@ public class GraphLoader {
 
     public void load(GithubFetcher.RepositorySnapshot snapshot) {
         GraphContextGenerator graph = graphClient.projectGraph();
-        for (JsonNode issue : snapshot.issues()) {
+        loadIssues(graph, snapshot.issues());
+        loadPullRequests(graph, snapshot.pullRequests());
+        int changedEdges = loadChangedFiles(graph, snapshot.files());
+        int reviewedEdges = loadReviews(graph, snapshot.reviews());
+        int commentedEdges = loadComments(graph, snapshot.comments());
+        logger.info("Created {} REVIEWED, {} COMMENTED_ON and {} CHANGED edges",
+                reviewedEdges, commentedEdges, changedEdges);
+    }
+
+    private void loadIssues(GraphContextGenerator graph, Iterable<JsonNode> issues) {
+        for (JsonNode issue : issues) {
             if (issue.has("pull_request")) {
                 continue;
             }
@@ -32,13 +42,19 @@ public class GraphLoader {
             linkAuthor(graph, issue, Queries.LINK_AUTHORED);
             linkTopics(graph, issue);
         }
-        for (JsonNode pullRequest : snapshot.pullRequests()) {
+    }
+
+    private void loadPullRequests(GraphContextGenerator graph, Iterable<JsonNode> pullRequests) {
+        for (JsonNode pullRequest : pullRequests) {
             run(graph, Queries.MERGE_PR, prParams(pullRequest));
             linkAuthor(graph, pullRequest, Queries.LINK_AUTHORED);
             linkTopics(graph, pullRequest);
         }
+    }
+
+    private int loadChangedFiles(GraphContextGenerator graph, Iterable<JsonNode> files) {
         int changedEdges = 0;
-        for (JsonNode file : snapshot.files()) {
+        for (JsonNode file : files) {
             int number = file.path("number").asInt();
             String path = file.path("filename").asText();
             if (number < 1 || path.isBlank()) {
@@ -51,8 +67,12 @@ public class GraphLoader {
             run(graph, Queries.LINK_CHANGED, params);
             changedEdges++;
         }
+        return changedEdges;
+    }
+
+    private int loadReviews(GraphContextGenerator graph, Iterable<JsonNode> reviews) {
         int reviewedEdges = 0;
-        for (JsonNode review : snapshot.reviews()) {
+        for (JsonNode review : reviews) {
             if (isBot(review.path("user"))) {
                 continue;
             }
@@ -61,15 +81,18 @@ public class GraphLoader {
                 reviewedEdges++;
             }
         }
+        return reviewedEdges;
+    }
+
+    private int loadComments(GraphContextGenerator graph, Iterable<JsonNode> comments) {
         int commentedEdges = 0;
-        for (JsonNode comment : snapshot.comments()) {
+        for (JsonNode comment : comments) {
             if (linkPerson(graph, comment.path("user"), comment.path("number").asInt(),
                     Queries.LINK_COMMENTED)) {
                 commentedEdges++;
             }
         }
-        logger.info("Created {} REVIEWED, {} COMMENTED_ON and {} CHANGED edges",
-                reviewedEdges, commentedEdges, changedEdges);
+        return commentedEdges;
     }
 
     public void loadDemo() {

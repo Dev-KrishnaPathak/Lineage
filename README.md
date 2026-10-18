@@ -1,91 +1,114 @@
 # Lineage
 
-Lineage is a graph-backed GitHub repository intelligence demo for FalkorDB Graph Hacks. It ingests GitHub issues, pull requests, reviews, comments, changed files, topics, decisions, and agent handoffs into a FalkorDB project graph. The UI shows the graph path behind answers and lets users simulate downstream impact.
+Lineage is a graph-backed GitHub repository intelligence application for FalkorDB. It ingests GitHub issues, pull requests, reviews, comments, changed files, topics, decisions, and agent handoffs into a project graph.
 
 ## Architecture
 
-- **Backend:** Java 17, Spring Boot 3, JFalkorDB, Jackson, LangChain4j
-- **Graph:** FalkorDB, with one `lineage_<repo>` project graph and `contrib_<login>` contributor graphs
-- **Ingestion:** GitHub REST API with pagination and a demo-data fallback
-- **Agents:** Triager -> Matcher -> Historian, with chained `Handoff` nodes
+- **Backend:** Java 17, Spring Boot 3, Maven, Docker
+- **Graph:** FalkorDB Cloud or local FalkorDB Docker
 - **Frontend:** React, Vite, and `react-force-graph-2d`
-- **Baseline:** isolated embedding similarity search with no graph queries
+- **Deployment:** Backend on Render, frontend on Vercel, database on FalkorDB Cloud
 
 The canonical node, edge, and property names are documented in [docs/schema.md](docs/schema.md).
 
-## Setup
+## Deployment
+
+### Environment variables
+
+| Variable | Backend/frontend | Default | Description |
+| --- | --- | --- | --- |
+| `FALKORDB_HOST` | Backend | `localhost` | FalkorDB hostname |
+| `FALKORDB_PORT` | Backend | `6379` | FalkorDB Redis port |
+| `FALKORDB_USER` | Backend | empty | FalkorDB Cloud username |
+| `FALKORDB_PASSWORD` | Backend | empty | FalkorDB Cloud password |
+| `GITHUB_TOKEN` | Backend | empty | Optional GitHub token |
+| `LINEAGE_REPOSITORY` | Backend | empty | Optional startup repository, for example `owner/repository` |
+| `LLM_API_KEY` | Backend | empty | Optional decision/agent model key |
+| `ALLOWED_ORIGINS` | Backend | `http://localhost:5173` | Comma-separated browser origins |
+| `VITE_API_URL` | Frontend | `http://localhost:8080` | Public backend URL |
+
+Do not commit `.env` files, tokens, passwords, or deployment credentials.
+
+### FalkorDB Cloud
+
+Create a free FalkorDB Cloud database and copy its host, port, username, and password into the Render backend service. Keep the project graph name at its default unless you need a separate graph. FalkorDB Cloud free-tier storage may be ephemeral, so the backend automatically seeds demo data when the project graph is empty.
+
+If both `LINEAGE_REPOSITORY` and `GITHUB_TOKEN` are configured, startup first attempts to ingest that repository. If ingestion fails, it loads the built-in demo seed instead.
+
+### Render backend
+
+1. Create a new Render **Web Service** from this repository.
+2. Choose **Docker** as the runtime.
+3. Set the Dockerfile path to `backend/Dockerfile`.
+4. Set the Docker build context/root directory to `backend`.
+5. Add the backend environment variables from the table above.
+6. Set `ALLOWED_ORIGINS` to the final Vercel URL, for example `https://lineage.vercel.app`.
+7. Deploy and verify:
+
+   ```text
+   https://<render-backend-domain>/health
+   ```
+
+   Expected response:
+
+   ```json
+   {"status":"ok"}
+   ```
+
+Render provides `PORT`; Spring Boot uses it automatically.
+
+### Vercel frontend
+
+1. Import this repository into Vercel.
+2. Set the project root directory to `frontend`.
+3. Use the Vite defaults:
+   - Build command: `npm run build`
+   - Output directory: `dist`
+4. Set `VITE_API_URL` to the public Render backend URL.
+5. Deploy the frontend.
+6. Update Render’s `ALLOWED_ORIGINS` with the final Vercel domain and redeploy the backend if needed.
+
+Vercel automatically serves the SPA entry point for this client-side application; no `vercel.json` is required.
+
+## Local run
 
 1. Copy the environment template:
 
    ```sh
    cp .env.example .env
+   cp frontend/.env.example frontend/.env
    ```
 
-2. Set `GITHUB_REPOSITORY` to `owner/repository`. Add `GITHUB_TOKEN` and `LLM_API_KEY` when available.
-   The UI can also load any public `owner/repository` at runtime. Set `GITHUB_TOKEN` for higher GitHub API limits and private repositories.
-
-   GitHub's unauthenticated API limit is shared by the current network. If loading returns HTTP 429, export a personal access token locally and restart the backend:
-
-   ```sh
-   export GITHUB_TOKEN=your_token
-   ```
-
-   `GH_TOKEN` is also supported. Never commit either token or paste it into source files.
-
-3. Start FalkorDB:
+2. Start local FalkorDB:
 
    ```sh
    docker compose up -d
    ```
 
-4. Install frontend dependencies:
+3. Start the backend:
+
+   ```sh
+   cd backend
+   mvn spring-boot:run
+   ```
+
+4. Start the frontend in another terminal:
 
    ```sh
    cd frontend
    npm install
+   npm run dev
    ```
 
-## Run
-
-Start the backend from the repository root:
-
-```sh
-cd backend
-mvn spring-boot:run
-```
-
-Enable ingestion for a run:
-
-```sh
-INGEST_ENABLED=true mvn spring-boot:run
-```
-
-Start the frontend in another terminal:
-
-```sh
-cd frontend
-npm run dev
-```
-
-The frontend runs at http://localhost:5173 and the backend at http://localhost:8080.
+5. Open `http://localhost:5173`. With no environment variables set, the backend connects to local FalkorDB and seeds demo data when the graph is empty.
 
 ## API
 
+- `GET /health` returns `{"status":"ok"}`.
 - `GET /graph` returns graph nodes and links.
-- `POST /ask` accepts `{ "question": "..." }` and returns an answer, sources, and `pathNodeIds`.
-- `POST /pr` accepts `{ "prNumber": 2 }` and returns reviewers, conflicts, a draft comment, handoffs, and path IDs.
+- `POST /ask` accepts `{ "question": "..." }`.
+- `POST /pr` accepts `{ "prNumber": 2 }`.
 - `GET /recommend/{login}` recommends open issues.
 - `POST /ask/baseline` runs the graph-free baseline.
 - `POST /simulate/{nodeId}` traverses downstream graph relationships.
-- `POST /ingest` accepts `{ "repository": "owner/repository" }`, fetches GitHub data, and replaces the active project graph.
-
-## Demo script
-
-1. Start FalkorDB and run the backend with `INGEST_ENABLED=true`. If GitHub configuration is unavailable, the demo dataset is loaded automatically.
-2. Open the frontend and select **Ask the graph**.
-3. Ask why caching was decided or ask what a newcomer should work on.
-4. Click **Review** for PR `2` to see the reviewer/conflict tools and the Triager -> Matcher -> Historian timeline.
-5. Click a highlighted graph node to run the downstream what-if simulation.
-6. Use **RAG vs graph** to compare the graph-backed response with the isolated baseline.
-
-To switch repositories without restarting the app, enter an `owner/repository` in the **Load a GitHub repository** field and choose **Load repository**.
+- `POST /ingest` accepts `{ "repository": "owner/repository" }`.

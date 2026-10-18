@@ -17,8 +17,12 @@ public class GraphClient {
     public GraphClient(
             @Value("${lineage.falkordb.host:localhost}") String host,
             @Value("${lineage.falkordb.port:6379}") int port,
+            @Value("${lineage.falkordb.user:}") String user,
+            @Value("${lineage.falkordb.password:}") String password,
             @Value("${lineage.falkordb.project-graph:lineage_demo}") String projectGraphName) {
-        this.driver = FalkorDB.driver(host, port);
+        this.driver = user.isBlank() && password.isBlank()
+                ? FalkorDB.driver(host, port)
+                : FalkorDB.driver(host, port, user, password);
         this.projectGraphName = Objects.requireNonNull(projectGraphName);
     }
 

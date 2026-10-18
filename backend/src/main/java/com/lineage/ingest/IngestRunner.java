@@ -6,6 +6,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+
 @Component
 @ConditionalOnProperty(name = "lineage.ingest.enabled", havingValue = "true")
 public class IngestRunner implements CommandLineRunner {
@@ -32,7 +34,7 @@ public class IngestRunner implements CommandLineRunner {
             graphLoader.load(snapshot);
             decisionDetector.detect(snapshot);
             log.info("GitHub ingestion completed");
-        } catch (Exception exception) {
+        } catch (IOException | InterruptedException | IllegalArgumentException | IllegalStateException exception) {
             log.warn("GitHub ingestion failed; loading demo data instead: {}", exception.getMessage());
             graphLoader.loadDemo();
         }
